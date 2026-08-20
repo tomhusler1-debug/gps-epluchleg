@@ -52,14 +52,20 @@ Les hébergeurs comme Render ou Railway ne garantissent pas de disque persistant
 
 ### 2. Déployer sur Render (ou Railway)
 
-Sur [render.com](https://render.com) (ou [railway.app](https://railway.app)) :
+**Option simple sur Render : utiliser le fichier `render.yaml`** — ce dépôt en contient un à sa racine qui préconfigure tout automatiquement. Sur [render.com](https://render.com) : "New" → "Blueprint" → sélectionnez ce dépôt. Render détecte `render.yaml` et vous demande uniquement de saisir les deux valeurs Turso (`TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`) avant de déployer.
+
+**Configuration manuelle (Render "Web Service" classique, ou Railway)** :
 
 1. Connectez votre compte GitHub et sélectionnez ce dépôt.
 2. Configurez :
-   - **Root directory** : `server`
+   - **Root directory** : `server` ⚠️ étape la plus souvent oubliée — sans elle, l'hébergeur cherche `package.json` à la racine du dépôt (où il n'y en a pas) et l'erreur `Couldn't find a package.json file` apparaît.
    - **Build command** : `npm install`
-   - **Start command** : `npm start`
+   - **Start command** : `npm start` (pas `yarn start` — ce dépôt n'utilise pas Yarn)
 3. Ajoutez les variables d'environnement :
    - `TURSO_DATABASE_URL` = l'URL récupérée à l'étape précédente
    - `TURSO_AUTH_TOKEN` = le token récupéré à l'étape précédente
 4. Déployez. Vos clients et tournées seront désormais conservés durablement, même après un redémarrage ou un nouveau déploiement.
+
+### Dépannage : `Couldn't find a package.json file in "/opt/render/project/src"`
+
+Cette erreur signifie que le **Root directory** n'est pas réglé sur `server`. Dans le tableau de bord Render, ouvrez votre service → **Settings** → **Build & Deploy**, mettez `server` dans le champ "Root Directory", vérifiez aussi que "Start Command" est bien `npm start`, puis relancez un déploiement manuel ("Manual Deploy" → "Deploy latest commit").
