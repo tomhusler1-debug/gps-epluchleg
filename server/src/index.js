@@ -1,7 +1,7 @@
 const express = require('express');
 const path = require('path');
 
-require('./db');
+const db = require('./db');
 const clientsRouter = require('./routes/clients');
 const tourneesRouter = require('./routes/tournees');
 
@@ -19,6 +19,14 @@ app.get('*', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`GPS Tournées démarré sur http://localhost:${PORT}`);
-});
+
+db.init()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`GPS Tournées démarré sur http://localhost:${PORT}`);
+    });
+  })
+  .catch((err) => {
+    console.error('Erreur au démarrage de la base de données :', err);
+    process.exit(1);
+  });

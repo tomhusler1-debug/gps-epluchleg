@@ -1,15 +1,22 @@
-const Database = require('better-sqlite3');
+const { createClient } = require('@libsql/client');
 const path = require('path');
 const fs = require('fs');
 
-const dataDir = path.join(__dirname, '..', 'data');
-if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+const remoteUrl = process.env.TURSO_DATABASE_URL;
+const authToken = process.env.TURSO_AUTH_TOKEN;
 
-const db = new Database(path.join(dataDir, 'gps.db'));
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
+let url;
+if (remoteUrl) {
+  url = remoteUrl;
+} else {
+  const dataDir = path.join(__dirname, '..', 'data');
+  if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+  url = `file:${path.join(dataDir, 'gps.db')}`;
+}
 
-db.exec(`
+const client = createClient(remoteUrl ? { url, authToken } : { url });
+
+const SCHEMA = `
 CREATE TABLE IF NOT EXISTS clients (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
@@ -43,6 +50,10 @@ CREATE TABLE IF NOT EXISTS geocode_cache (
   display_name TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
-`);
+`;
 
-module.exports = db;
+async function init() {
+  await client.executeMultiple(SCHEMA);
+}
+
+module.exports = { client, init };

@@ -1,4 +1,4 @@
-const db = require('./db');
+const { client } = require('./db');
 
 let lastRequestTime = 0;
 const MIN_INTERVAL_MS = 1100; // Nominatim demande max ~1 requête/seconde
@@ -13,10 +13,11 @@ async function geocodeAddress(address) {
   const query = address.trim();
   if (!query) throw new Error('Adresse vide');
 
-  const cached = db
-    .prepare('SELECT lat, lng, display_name FROM geocode_cache WHERE query = ?')
-    .get(query);
-  if (cached) return cached;
+  const cachedRs = await client.execute({
+    sql: 'SELECT lat, lng, display_name FROM geocode_cache WHERE query = ?',
+    args: [query],
+  });
+  if (cachedRs.rows.length) return cachedRs.rows[0];
 
   await rateLimit();
 
@@ -39,9 +40,10 @@ async function geocodeAddress(address) {
   const { lat, lon, display_name } = results[0];
   const result = { lat: parseFloat(lat), lng: parseFloat(lon), display_name };
 
-  db.prepare(
-    'INSERT OR REPLACE INTO geocode_cache (query, lat, lng, display_name) VALUES (?, ?, ?, ?)'
-  ).run(query, result.lat, result.lng, result.display_name);
+  await client.execute({
+    sql: 'INSERT OR REPLACE INTO geocode_cache (query, lat, lng, display_name) VALUES (?, ?, ?, ?)',
+    args: [query, result.lat, result.lng, result.display_name],
+  });
 
   return result;
 }
