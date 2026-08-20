@@ -1,0 +1,24 @@
+const express = require('express');
+const path = require('path');
+
+require('./db');
+const clientsRouter = require('./routes/clients');
+const tourneesRouter = require('./routes/tournees');
+
+const app = express();
+app.use(express.json());
+
+app.use('/api/clients', clientsRouter);
+app.use('/api/tournees', tourneesRouter);
+
+const publicDir = path.join(__dirname, '..', 'public');
+app.use(express.static(publicDir));
+
+app.get('*', (req, res) => {
+  res.sendFile(path.join(publicDir, 'index.html'));
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`GPS Tournées démarré sur http://localhost:${PORT}`);
+});

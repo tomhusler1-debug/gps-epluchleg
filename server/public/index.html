@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<title>GPS Tournées Clients</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div id="app">
+  <aside id="sidebar">
+    <h1>🚚 Mes Tournées</h1>
+    <nav id="tabs">
+      <button class="tab-btn active" data-tab="clients">Clients</button>
+      <button class="tab-btn" data-tab="tournees">Tournées</button>
+    </nav>
+
+    <section id="tab-clients" class="tab-panel active">
+      <form id="client-form">
+        <h2 id="client-form-title">Ajouter un client</h2>
+        <input type="hidden" id="client-id" />
+        <input type="text" id="client-name" placeholder="Nom du client" required />
+        <input type="text" id="client-address" placeholder="Adresse complète" required />
+        <input type="text" id="client-phone" placeholder="Téléphone (optionnel)" />
+        <textarea id="client-notes" placeholder="Notes (optionnel)"></textarea>
+        <div class="form-actions">
+          <button type="submit" id="client-submit-btn">Ajouter</button>
+          <button type="button" id="client-cancel-btn" class="secondary" style="display:none">Annuler</button>
+        </div>
+        <p id="client-form-error" class="error"></p>
+      </form>
+      <input type="text" id="client-search" placeholder="🔎 Rechercher un client..." />
+      <div id="client-list"></div>
+    </section>
+
+    <section id="tab-tournees" class="tab-panel">
+      <div id="tournee-list-view">
+        <form id="tournee-form">
+          <h2>Nouvelle tournée</h2>
+          <input type="text" id="tournee-name" placeholder="Nom de la tournée" required />
+          <input type="date" id="tournee-date" />
+          <button type="submit">Créer</button>
+        </form>
+        <div id="tournee-list"></div>
+      </div>
+
+      <div id="tournee-detail-view" style="display:none">
+        <button id="back-to-tournees" class="secondary">← Retour aux tournées</button>
+        <h2 id="tournee-detail-name"></h2>
+        <p id="tournee-detail-meta" class="muted"></p>
+        <div class="tournee-actions">
+          <button id="optimize-btn">🧭 Optimiser l'ordre</button>
+          <button id="delete-tournee-btn" class="danger">Supprimer</button>
+        </div>
+
+        <h3>Étapes (<span id="stop-count">0</span>)</h3>
+        <ol id="stop-list"></ol>
+
+        <h3>Ajouter un client existant</h3>
+        <div class="inline-form">
+          <select id="add-existing-client"></select>
+          <button id="add-existing-btn">Ajouter</button>
+        </div>
+
+        <h3>📍 Clients à proximité</h3>
+        <label class="radius-label">
+          Rayon de recherche :
+          <select id="suggestion-radius">
+            <option value="300">300 m</option>
+            <option value="500" selected>500 m</option>
+            <option value="1000">1 km</option>
+            <option value="2000">2 km</option>
+            <option value="5000">5 km</option>
+          </select>
+        </label>
+        <div id="suggestion-list"></div>
+      </div>
+    </section>
+  </aside>
+  <main id="map"></main>
+</div>
+
+<script src="vendor/leaflet/leaflet.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
