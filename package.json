@@ -1,15 +1,15 @@
 {
-  "name": "gps-epluchleg-server",
+  "name": "gps-epluchleg",
   "version": "1.0.0",
   "private": true,
   "description": "GPS de tournées : gestion des clients et de leurs adresses, création de tournées et suggestion de clients proches.",
-  "main": "src/index.js",
+  "main": "api/index.js",
   "scripts": {
-    "start": "node src/index.js",
-    "dev": "node --watch src/index.js"
+    "dev": "node --watch dev-server.js",
+    "start": "node dev-server.js"
   },
   "dependencies": {
-    "@libsql/client": "^0.17.4",
+    "@upstash/redis": "^1.34.3",
     "express": "^4.19.2"
   },
   "devDependencies": {
