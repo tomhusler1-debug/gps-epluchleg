@@ -172,6 +172,54 @@ button:disabled {
   margin-bottom: 10px;
 }
 
+#selection-bar {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.selection-bar-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.selection-bar-row:last-of-type {
+  margin-bottom: 0;
+}
+
+.selection-bar-row button {
+  flex: 1;
+}
+
+#selection-count {
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--primary-dark);
+}
+
+.client-checkbox {
+  margin-right: 4px;
+}
+
+.card-select {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.card-select span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .card {
   background: white;
   border: 1px solid var(--border);
@@ -221,6 +269,7 @@ button:disabled {
 
 .tournee-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   align-items: center;
   margin-bottom: 8px;

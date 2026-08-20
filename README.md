@@ -6,8 +6,9 @@ Application de gestion de tournées : enregistrez vos clients et leurs adresses 
 
 - **Clients** : ajout, modification, suppression. Chaque adresse est automatiquement géolocalisée (latitude/longitude) et stockée en base de données (SQLite, fichier local).
 - **Carte** : tous les clients sont affichés sur une carte OpenStreetMap.
-- **Tournées** : créez une tournée (nom + date), ajoutez-y des clients, réordonnez les étapes manuellement ou automatiquement (bouton "Optimiser l'ordre", qui calcule le trajet le plus court de proche en proche).
+- **Tournées** : créez une tournée (nom + date), ajoutez-y des clients, réordonnez les étapes manuellement ou automatiquement (bouton "Optimiser l'ordre", qui calcule le trajet le plus court de proche en proche). Le trajet routier réel (et non plus une simple ligne droite) est affiché sur la carte avec la distance et la durée estimées.
 - **Clients à proximité** : pour une tournée ouverte, l'application liste les clients qui ne sont pas encore dans la tournée mais se trouvent à proximité (rayon réglable : 300 m à 5 km) d'une des étapes, avec la distance exacte et un bouton pour les ajouter en un clic.
+- **Itinéraire entre plusieurs clients** : dans l'onglet Clients, cochez plusieurs clients pour faire apparaître une barre d'action permettant de tracer l'itinéraire routier optimisé entre eux sur la carte (distance + durée), ou d'ouvrir directement la navigation GPS turn-by-turn dans Google Maps sur votre téléphone.
 
 ## Démarrage
 
@@ -27,6 +28,7 @@ Les données (clients, tournées) sont stockées dans `server/data/gps.db`, un f
 
 - **Backend** : Node.js + Express, base de données SQLite compatible cloud (`@libsql/client`). En local, sans configuration, les données sont stockées dans un fichier (`server/data/gps.db`). En ligne, on pointe vers une base [Turso](https://turso.tech) gratuite pour que les données ne soient jamais perdues (voir ci-dessous).
 - **Géocodage** : les adresses sont converties en coordonnées via l'API publique [Nominatim (OpenStreetMap)](https://nominatim.org/), avec mise en cache des résultats pour éviter les appels répétés. Une connexion internet est donc nécessaire pour ajouter un nouveau client et pour charger les fonds de carte.
+- **Calcul d'itinéraire** : les trajets routiers réels (distance, durée, tracé) sont calculés via le service public [OSRM](https://project-osrm.org/) (serveur de démonstration, gratuit et sans clé). En cas d'indisponibilité, l'application se replie automatiquement sur une ligne droite entre les points.
 - **Frontend** : HTML/CSS/JavaScript, sans étape de build, avec [Leaflet](https://leafletjs.com/) pour la carte (fournie localement dans `server/public/vendor/leaflet`).
 
 ## Développement

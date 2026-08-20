@@ -31,6 +31,20 @@
         <p id="client-form-error" class="error"></p>
       </form>
       <input type="text" id="client-search" placeholder="🔎 Rechercher un client..." />
+
+      <div id="selection-bar" style="display:none">
+        <div class="selection-bar-row">
+          <span id="selection-count"></span>
+          <button id="clear-selection-btn" class="secondary">Vider</button>
+        </div>
+        <div class="selection-bar-row">
+          <button id="show-route-btn">🧭 Voir l'itinéraire</button>
+          <button id="open-gmaps-btn" class="secondary">🗺️ Ouvrir dans Google Maps</button>
+        </div>
+        <p id="route-info" class="muted"></p>
+        <p id="route-error" class="error"></p>
+      </div>
+
       <div id="client-list"></div>
     </section>
 
@@ -51,8 +65,10 @@
         <p id="tournee-detail-meta" class="muted"></p>
         <div class="tournee-actions">
           <button id="optimize-btn">🧭 Optimiser l'ordre</button>
+          <button id="tournee-gmaps-btn" class="secondary">🗺️ Google Maps</button>
           <button id="delete-tournee-btn" class="danger">Supprimer</button>
         </div>
+        <p id="tournee-route-info" class="muted"></p>
 
         <h3>Étapes (<span id="stop-count">0</span>)</h3>
         <ol id="stop-list"></ol>

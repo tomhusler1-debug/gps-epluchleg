@@ -3,6 +3,7 @@ const state = {
   tournees: [],
   currentTournee: null,
   editingClientId: null,
+  selectedClientIds: new Set(),
 };
 
 async function api(method, url, body) {
@@ -26,7 +27,10 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 
 const clientMarkersLayer = L.layerGroup().addTo(map);
 const tourneeLayer = L.layerGroup().addTo(map);
+const selectionRouteLayer = L.layerGroup().addTo(map);
 let hasFitBounds = false;
+let selectionRouteRequestId = 0;
+let tourneeRouteRequestId = 0;
 
 function numberedIcon(n, color) {
   return L.divIcon({
@@ -45,8 +49,10 @@ document.querySelectorAll('.tab-btn').forEach((btn) => {
     btn.classList.add('active');
     document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
     if (btn.dataset.tab === 'clients') {
+      tourneeLayer.clearLayers();
       renderClientMarkers();
     } else {
+      selectionRouteLayer.clearLayers();
       renderTourneeMap();
     }
   });
@@ -55,8 +61,13 @@ document.querySelectorAll('.tab-btn').forEach((btn) => {
 // --- Clients ---
 async function loadClients() {
   state.clients = await api('GET', '/api/clients');
+  const validIds = new Set(state.clients.map((c) => c.id));
+  for (const id of state.selectedClientIds) {
+    if (!validIds.has(id)) state.selectedClientIds.delete(id);
+  }
   renderClientList();
   renderClientMarkers();
+  renderSelectionBar();
 }
 
 function renderClientList() {
@@ -76,7 +87,10 @@ function renderClientList() {
       (c) => `
     <div class="card" data-client-id="${c.id}">
       <div class="card-title">
-        <span>${escapeHtml(c.name)}</span>
+        <label class="card-select">
+          <input type="checkbox" class="client-checkbox" ${state.selectedClientIds.has(c.id) ? 'checked' : ''} ${c.lat == null ? 'disabled title="Adresse non localisée"' : ''} />
+          <span>${escapeHtml(c.name)}</span>
+        </label>
         ${c.lat == null ? '<span class="pill" style="background:#fee2e2;color:#b91c1c">non localisé</span>' : ''}
       </div>
       <div class="card-sub">${escapeHtml(c.address)}</div>
@@ -95,8 +109,97 @@ function renderClientList() {
     card.querySelector('[data-action="locate"]').addEventListener('click', () => locateClient(id));
     card.querySelector('[data-action="edit"]').addEventListener('click', () => editClient(id));
     card.querySelector('[data-action="delete"]').addEventListener('click', () => deleteClient(id));
+    const checkbox = card.querySelector('.client-checkbox');
+    if (checkbox) checkbox.addEventListener('change', () => toggleClientSelection(id, checkbox.checked));
   });
 }
+
+function toggleClientSelection(id, checked) {
+  if (checked) state.selectedClientIds.add(id);
+  else state.selectedClientIds.delete(id);
+  renderSelectionBar();
+}
+
+function renderSelectionBar() {
+  const bar = document.getElementById('selection-bar');
+  const count = state.selectedClientIds.size;
+
+  if (count === 0) {
+    bar.style.display = 'none';
+    document.getElementById('route-info').textContent = '';
+    document.getElementById('route-error').textContent = '';
+    selectionRouteLayer.clearLayers();
+    return;
+  }
+
+  bar.style.display = 'block';
+  document.getElementById('selection-count').textContent = `${count} client${count > 1 ? 's' : ''} sélectionné${count > 1 ? 's' : ''}`;
+  document.getElementById('show-route-btn').disabled = count < 2;
+  document.getElementById('open-gmaps-btn').disabled = count < 2;
+}
+
+document.getElementById('clear-selection-btn').addEventListener('click', () => {
+  selectionRouteRequestId++;
+  state.selectedClientIds.clear();
+  renderClientList();
+  renderSelectionBar();
+});
+
+document.getElementById('show-route-btn').addEventListener('click', async () => {
+  const errorEl = document.getElementById('route-error');
+  const infoEl = document.getElementById('route-info');
+  const btn = document.getElementById('show-route-btn');
+  errorEl.textContent = '';
+  infoEl.textContent = '';
+
+  const selected = state.clients.filter((c) => state.selectedClientIds.has(c.id));
+  const withCoords = selected.filter((c) => c.lat != null && c.lng != null);
+  if (withCoords.length < 2) {
+    errorEl.textContent = 'Il faut au moins deux clients localisés dans la sélection.';
+    return;
+  }
+
+  const requestId = ++selectionRouteRequestId;
+  btn.disabled = true;
+  btn.textContent = 'Calcul en cours...';
+
+  try {
+    const points = withCoords.map((c) => ({ lat: c.lat, lng: c.lng }));
+    const result = await api('POST', '/api/route/trip', { points });
+    if (requestId !== selectionRouteRequestId) return;
+
+    selectionRouteLayer.clearLayers();
+    result.order.forEach((clientIdx, i) => {
+      const c = withCoords[clientIdx];
+      const marker = L.marker([c.lat, c.lng], { icon: numberedIcon(i + 1, '#7c3aed') });
+      marker.bindPopup(popupHtml(c));
+      marker.addTo(selectionRouteLayer);
+    });
+    L.polyline(result.geometry, { color: '#7c3aed', weight: 4 }).addTo(selectionRouteLayer);
+    map.fitBounds(L.latLngBounds(result.geometry), { padding: [50, 50], maxZoom: 15 });
+    infoEl.textContent = `🚗 ${formatDistance(result.distance)} · environ ${formatDuration(result.duration)}`;
+  } catch (err) {
+    if (requestId !== selectionRouteRequestId) return;
+    errorEl.textContent = err.message;
+  } finally {
+    if (requestId === selectionRouteRequestId) {
+      btn.disabled = false;
+      btn.textContent = "🧭 Voir l'itinéraire";
+    }
+  }
+});
+
+document.getElementById('open-gmaps-btn').addEventListener('click', () => {
+  const errorEl = document.getElementById('route-error');
+  errorEl.textContent = '';
+  const selected = state.clients.filter((c) => state.selectedClientIds.has(c.id));
+  const withCoords = selected.filter((c) => c.lat != null && c.lng != null);
+  if (withCoords.length < 2) {
+    errorEl.textContent = 'Il faut au moins deux clients localisés dans la sélection.';
+    return;
+  }
+  window.open(buildGoogleMapsUrl(withCoords, { optimize: true }), '_blank', 'noopener');
+});
 
 document.getElementById('client-search').addEventListener('input', renderClientList);
 
@@ -256,6 +359,7 @@ document.getElementById('tournee-form').addEventListener('submit', async (e) => 
 });
 
 document.getElementById('back-to-tournees').addEventListener('click', () => {
+  tourneeRouteRequestId++;
   state.currentTournee = null;
   document.getElementById('tournee-detail-view').style.display = 'none';
   document.getElementById('tournee-list-view').style.display = 'block';
@@ -267,6 +371,7 @@ document.getElementById('delete-tournee-btn').addEventListener('click', async ()
   if (!state.currentTournee) return;
   if (!confirm(`Supprimer la tournée "${state.currentTournee.name}" ?`)) return;
   await api('DELETE', `/api/tournees/${state.currentTournee.id}`);
+  tourneeRouteRequestId++;
   state.currentTournee = null;
   document.getElementById('tournee-detail-view').style.display = 'none';
   document.getElementById('tournee-list-view').style.display = 'block';
@@ -373,6 +478,17 @@ document.getElementById('optimize-btn').addEventListener('click', async () => {
   await refreshTourneeDetail();
 });
 
+document.getElementById('tournee-gmaps-btn').addEventListener('click', () => {
+  const t = state.currentTournee;
+  if (!t) return;
+  const withCoords = t.stops.filter((s) => s.lat != null);
+  if (withCoords.length < 2) {
+    alert('Il faut au moins deux étapes localisées pour ouvrir Google Maps.');
+    return;
+  }
+  window.open(buildGoogleMapsUrl(withCoords, { optimize: false }), '_blank', 'noopener');
+});
+
 document.getElementById('suggestion-radius').addEventListener('change', loadSuggestions);
 
 async function loadSuggestions() {
@@ -418,6 +534,29 @@ function formatDistance(m) {
   return m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${m} m`;
 }
 
+function formatDuration(seconds) {
+  const min = Math.round(seconds / 60);
+  if (min < 60) return `${min} min`;
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return `${h} h ${String(m).padStart(2, '0')}`;
+}
+
+function buildGoogleMapsUrl(points, { optimize } = {}) {
+  const fmt = (p) => `${p.lat},${p.lng}`;
+  const origin = fmt(points[0]);
+  const destination = fmt(points[points.length - 1]);
+  const middle = points.slice(1, -1);
+
+  const params = new URLSearchParams({ api: '1', origin, destination, travelmode: 'driving' });
+  if (middle.length) {
+    const waypoints = middle.map(fmt).join('|');
+    params.set('waypoints', optimize ? `optimize:true|${waypoints}` : waypoints);
+  }
+
+  return `https://www.google.com/maps/dir/?${params.toString()}`;
+}
+
 function renderTourneeMap() {
   tourneeLayer.clearLayers();
   const t = state.currentTournee;
@@ -431,16 +570,33 @@ function renderTourneeMap() {
     marker.addTo(tourneeLayer);
   });
 
-  if (withCoords.length > 1) {
+  if (withCoords.length) {
+    const bounds = L.latLngBounds(withCoords.map((s) => [s.lat, s.lng]));
+    map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+  }
+
+  loadTourneeRoute(withCoords);
+}
+
+async function loadTourneeRoute(withCoords) {
+  const infoEl = document.getElementById('tournee-route-info');
+  infoEl.textContent = '';
+  if (withCoords.length < 2) return;
+
+  const requestId = ++tourneeRouteRequestId;
+  try {
+    const points = withCoords.map((s) => ({ lat: s.lat, lng: s.lng }));
+    const result = await api('POST', '/api/route', { points });
+    if (requestId !== tourneeRouteRequestId) return;
+    L.polyline(result.geometry, { color: '#16a34a', weight: 4 }).addTo(tourneeLayer);
+    infoEl.textContent = `🚗 ${formatDistance(result.distance)} · environ ${formatDuration(result.duration)}`;
+  } catch (err) {
+    if (requestId !== tourneeRouteRequestId) return;
+    // Repli : trajet à vol d'oiseau si le service d'itinéraire est indisponible
     L.polyline(
       withCoords.map((s) => [s.lat, s.lng]),
       { color: '#16a34a', weight: 3, dashArray: '6 6' }
     ).addTo(tourneeLayer);
-  }
-
-  if (withCoords.length) {
-    const bounds = L.latLngBounds(withCoords.map((s) => [s.lat, s.lng]));
-    map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
   }
 }
 

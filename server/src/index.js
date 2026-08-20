@@ -4,12 +4,14 @@ const path = require('path');
 const db = require('./db');
 const clientsRouter = require('./routes/clients');
 const tourneesRouter = require('./routes/tournees');
+const routeRouter = require('./routes/route');
 
 const app = express();
 app.use(express.json());
 
 app.use('/api/clients', clientsRouter);
 app.use('/api/tournees', tourneesRouter);
+app.use('/api/route', routeRouter);
 
 const publicDir = path.join(__dirname, '..', 'public');
 app.use(express.static(publicDir));
